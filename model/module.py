@@ -7,6 +7,22 @@ from torch.autograd import Function
 import torch.nn.functional as F
 
 
+def _scaled_dot_product_attention(q, k, v, attn_mask=None, dropout_p=0.0, is_causal=False):
+    """Wrapper around F.scaled_dot_product_attention.
+
+    The MPS backend raises ``NotImplementedError: scaled_dot_product_attention
+    for MPS does not support dropout`` even when ``dropout_p=0.0``.  Only pass
+    the argument when dropout is actually active.
+    """
+    if dropout_p and dropout_p > 0.0:
+        return F.scaled_dot_product_attention(
+            q, k, v, attn_mask=attn_mask, dropout_p=dropout_p, is_causal=is_causal
+        )
+    return F.scaled_dot_product_attention(
+        q, k, v, attn_mask=attn_mask, is_causal=is_causal
+    )
+
+
 class DifferentiableEntropyFunction(Function):
     @staticmethod
     def forward(ctx, zq, basis, K, eps):
@@ -342,7 +358,7 @@ class MultiHeadAttentionWithRoPE(nn.Module):
         else:
             attn_mask = None
 
-        attn_output = F.scaled_dot_product_attention(
+        attn_output = _scaled_dot_product_attention(
             q, k, v,
             attn_mask=attn_mask,
             dropout_p=self.attn_dropout_p if self.training else 0.0,
@@ -386,7 +402,7 @@ class MultiHeadCrossAttentionWithRoPE(nn.Module):
 
         is_causal_flag = self.training
 
-        attn_output = F.scaled_dot_product_attention(
+        attn_output = _scaled_dot_product_attention(
             q, k, v,
             attn_mask=attn_mask,
             dropout_p=self.attn_dropout_p if self.training else 0.0,

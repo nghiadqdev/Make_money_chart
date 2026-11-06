@@ -63,12 +63,16 @@ def load_data_files():
     data_files = []
     
     if os.path.exists(data_dir):
-        for file in os.listdir(data_dir):
-            if file.endswith(('.csv', '.feather')):
-                file_path = os.path.join(data_dir, file)
+        # Quét cả thư mục con (data/ashare, data/vn, data/us, ...)
+        for root, _, files in os.walk(data_dir):
+            for file in sorted(files):
+                if not file.endswith(('.csv', '.feather')):
+                    continue
+                file_path = os.path.join(root, file)
+                rel_name = os.path.relpath(file_path, data_dir)
                 file_size = os.path.getsize(file_path)
                 data_files.append({
-                    'name': file,
+                    'name': rel_name,
                     'path': file_path,
                     'size': f"{file_size / 1024:.1f} KB" if file_size < 1024*1024 else f"{file_size / (1024*1024):.1f} MB"
                 })

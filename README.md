@@ -131,8 +131,8 @@ The `predict` method requires three main inputs:
 ```python
 import pandas as pd
 
-# Load your data
-df = pd.read_csv("./data/XSHG_5min_600977.csv")
+# Load your data (repo đã kèm sẵn dữ liệu mẫu trong data/, xem data/README.md)
+df = pd.read_csv("./data/BTCUSDT_5m_2022-2026.csv")
 df['timestamps'] = pd.to_datetime(df['timestamps'])
 
 # Define context window and prediction length

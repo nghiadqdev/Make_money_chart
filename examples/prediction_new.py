@@ -9,13 +9,14 @@ import requests
 import json
 import time
 import random
+from pathlib import Path
 import akshare as ak
 from typing import Dict, List, Tuple, Optional
 
 warnings.filterwarnings('ignore')
 
 # 添加项目路径以便导入自定义模块
-sys.path.append("../")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 try:
     from model import Kronos, KronosTokenizer, KronosPredictor
 except ImportError:
@@ -206,8 +207,18 @@ def get_stock_data(stock_code, data_dir):
     """
     获取股票数据，如果数据文件不存在则从API获取真实数据
     """
-    csv_file_path = os.path.join(data_dir, f"{stock_code}_stock_data.csv")
+    # Ưu tiên dữ liệu đã chuẩn hoá trong repo: {code}_1d.csv, {code}_5m.csv
+    candidates = [
+        os.path.join(data_dir, f"{stock_code}_1d.csv"),
+        os.path.join(data_dir, f"{stock_code}_5m.csv"),
+        os.path.join(data_dir, f"{stock_code}_stock_data.csv"),
+    ]
+    for candidate in candidates:
+        if os.path.exists(candidate):
+            print(f"📁 使用现有数据文件: {candidate}")
+            return True, candidate
 
+    csv_file_path = os.path.join(data_dir, f"{stock_code}_stock_data.csv")
     if os.path.exists(csv_file_path):
         print(f"📁 使用现有数据文件: {csv_file_path}")
         return True, csv_file_path
@@ -1304,13 +1315,14 @@ def main():
     主函数：综合版Kronos模型股票预测系统
     """
     # ==================== 配置参数 ====================
+    repo_root = Path(__file__).resolve().parents[1]
     STOCK_CONFIG = {
-        "stock_code": "603288",
-        "stock_name": "海天味业",
-        "data_dir": r"D:\lianghuajiaoyi\Kronos\examples\data",
+        "stock_code": "600580",
+        "stock_name": "卧龙电驱",
+        "data_dir": str(repo_root / "data" / "ashare"),
         "pred_days": 60,
-        "output_dir": r"D:\lianghuajiaoyi\Kronos\examples\yuce",
-        "history_years": 1
+        "output_dir": str(repo_root / "examples" / "yuce"),
+        "history_years": 3
     }
 
     print("🤖 综合版Kronos模型股票价格预测系统")

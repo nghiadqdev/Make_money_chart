@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kronos × KuCoin — Paper Trading</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">K</div>
+        <div>
+          <h1>Kronos <span>×</span> KuCoin</h1>
+          <p class="sub">Paper Trading Dashboard · <span id="marketLabel">—</span></p>
+        </div>
+      </div>
+
+      <div class="top-right">
+        <div class="status-block">
+          <span id="statusPill" class="pill">CONNECTING</span>
+          <span class="paper-tag">PAPER · 100 USDT</span>
+        </div>
+        <div class="actions">
+          <button id="btnStart" class="btn primary" title="Bắt đầu paper bot">▶ Start test</button>
+          <button id="btnStop" class="btn warn" title="Chặn lệnh mới, chờ SL/TP">⏸ Stop mềm</button>
+          <button id="btnForce" class="btn danger" title="Bán hết và chốt sổ ngay">⛔ Chốt sổ ngay</button>
+          <button id="btnReset" class="btn ghost" title="Reset ledger về 100 USDT">↺ Reset</button>
+        </div>
+      </div>
+    </header>
+
+    <section class="stats-grid">
+      <div class="stat-card accent">
+        <div class="stat-label">Equity</div>
+        <div class="stat-value" id="equity">—</div>
+        <div class="stat-sub" id="equitySub">USDT</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Free cash</div>
+        <div class="stat-value" id="freeCash">—</div>
+        <div class="stat-sub">USDT khả dụng</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Realized PnL</div>
+        <div class="stat-value" id="realized">—</div>
+        <div class="stat-sub" id="winRate">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Unrealized PnL</div>
+        <div class="stat-value" id="unrealized">—</div>
+        <div class="stat-sub">theo giá mark</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Open positions</div>
+        <div class="stat-value" id="openPositions">—</div>
+        <div class="stat-sub" id="exposure">Exposure —</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Drawdown</div>
+        <div class="stat-value" id="drawdown">—</div>
+        <div class="stat-sub" id="peakEquity">Peak —</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Last price</div>
+        <div class="stat-value" id="lastPrice">—</div>
+        <div class="stat-sub" id="symbolLabel">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Circuit breaker</div>
+        <div class="stat-value small" id="circuit">—</div>
+        <div class="stat-sub" id="circuitSub">—</div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <div class="panel chart-panel">
+        <div class="panel-head">
+          <h2>Equity curve</h2>
+          <span class="muted" id="equityRange">—</span>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="equityChart"></canvas>
+        </div>
+      </div>
+
+      <div class="panel info-panel">
+        <div class="panel-head">
+          <h2>Bot / Risk</h2>
+          <span class="muted" id="pidLabel">—</span>
+        </div>
+        <dl class="kv">
+          <dt>State</dt><dd id="kvState">—</dd>
+          <dt>Control</dt><dd id="kvControl">—</dd>
+          <dt>Symbol</dt><dd id="kvSymbol">—</dd>
+          <dt>Timeframe</dt><dd id="kvTimeframe">—</dd>
+          <dt>Tranches</dt><dd id="kvTranches">—</dd>
+          <dt>Risk / trade</dt><dd id="kvRisk">—</dd>
+          <dt>Thresholds</dt><dd id="kvThresholds">—</dd>
+          <dt>Consecutive losses</dt><dd id="kvLosses">—</dd>
+          <dt>Cooldown until</dt><dd id="kvCooldown">—</dd>
+          <dt>Max drawdown</dt><dd id="kvMaxDD">—</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Open positions</h2>
+        <span class="muted" id="positionsHint">—</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Mở lúc</th><th>Side</th><th>Entry</th><th>Mark</th><th>Qty</th>
+              <th>Notional</th><th>SL</th><th>TP</th><th>Unrealized</th><th>PnL %</th>
+            </tr>
+          </thead>
+          <tbody id="positionsBody">
+            <tr><td colspan="10" class="empty">Chưa có position nào.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Order mô phỏng & khớp lệnh</h2>
+        <span class="muted" id="ordersHint">WORKING = SL/TP đang chờ · entry đã khớp</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Tạo lúc</th><th>Loại</th><th>Side</th><th>Qty</th>
+              <th>Giá đặt</th><th>Giá khớp</th><th>Phí</th><th>Trạng thái</th><th>Khớp lúc</th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr><td colspan="9" class="empty">Chưa có order. Bot sẽ tạo market entry + SL/TP khi signal được duyệt.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>AI Feedback · Đánh giá & hiệu chỉnh</h2>
+        <span class="muted">PENDING = forecast chờ đủ horizon để chấm điểm, không phải lệnh mua chờ khớp</span>
+      </div>
+      <div class="learn-grid">
+        <div class="learn-item"><span>Forecast đã đánh giá</span><b id="learnEvaluated">—</b></div>
+        <div class="learn-item"><span>Đang chờ đủ horizon</span><b id="learnPending">—</b></div>
+        <div class="learn-item"><span>Direction hit rate</span><b id="learnHitRate">—</b></div>
+        <div class="learn-item"><span>Brier score (thấp tốt)</span><b id="learnBrier">—</b></div>
+        <div class="learn-item"><span>MAE expected return</span><b id="learnMae">—</b></div>
+        <div class="learn-item"><span>Nến đã lưu để fine-tune</span><b id="learnCandles">—</b></div>
+        <div class="learn-item"><span>Ngưỡng LONG hiện tại</span><b id="learnLong">—</b></div>
+        <div class="learn-item"><span>Ngưỡng SHORT hiện tại</span><b id="learnShort">—</b></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Dự đoán lúc</th><th>Lookback</th><th>P up</th><th>P down</th><th>Exp.</th><th>Signal</th><th>Horizon</th><th>Actual</th><th>Hit</th><th>Brier</th></tr>
+          </thead>
+          <tbody id="forecastsBody">
+            <tr><td colspan="10" class="empty">Chưa có forecast. Bot sẽ lưu mỗi lần dự đoán và đánh giá sau khi đủ horizon.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="two-col">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Lịch sử khớp lệnh</h2>
+          <span class="muted" id="tradesHint">—</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Đóng lúc</th><th>Side</th><th>Entry</th><th>Exit</th><th>Qty</th><th>PnL</th><th>Return</th><th>Reason</th></tr>
+            </thead>
+            <tbody id="tradesBody">
+              <tr><td colspan="8" class="empty">Chưa có lệnh nào.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Signal gần đây</h2>
+          <span class="muted" id="signalsHint">—</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Thời gian</th><th>Signal</th><th>P up</th><th>P down</th><th>Exp.</th><th>Quyết định</th></tr>
+            </thead>
+            <tbody id="signalsBody">
+              <tr><td colspan="6" class="empty">Chưa có signal.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel logs-panel">
+      <div class="panel-head">
+        <h2>Log realtime</h2>
+        <span class="muted" id="updatedAt">—</span>
+      </div>
+      <pre id="logs" class="logs">Chưa có log.</pre>
+    </section>
+
+    <footer>
+      <span>Kronos paper-trading · không gửi lệnh thật · dữ liệu KuCoin public</span>
+      <span>F5 nếu dashboard mất kết nối</span>
+    </footer>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

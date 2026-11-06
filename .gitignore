@@ -59,6 +59,13 @@ Desktop.ini
 *.log
 logs/
 
+# Paper-trading runtime (ledger, state, SQLite, control flag)
+var/
+*.db
+*.db-wal
+*.db-shm
+config/settings.local.yaml
+
 # Environment
 .env
 .venv
@@ -74,3 +81,11 @@ venv.bak/
 temp/
 tmp/
 .python-version
+
+# Tool/cache artifacts
+.codegraph/
+.serena/
+
+# Generated market data (use Git LFS or keep local)
+data/*.csv
+data/**/*.csv

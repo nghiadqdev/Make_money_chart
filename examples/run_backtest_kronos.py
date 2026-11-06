@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from pathlib import Path
 from datetime import datetime, timedelta
 import warnings
 
@@ -36,14 +37,20 @@ class KronosBacktester:
         """
         加载历史数据
         """
-        csv_file = os.path.join(self.data_dir, f"{stock_code}_stock_data.csv")
-        if not os.path.exists(csv_file):
-            raise FileNotFoundError(f"数据文件不存在: {csv_file}")
+        candidates = [
+            os.path.join(self.data_dir, f"{stock_code}_1d.csv"),
+            os.path.join(self.data_dir, f"{stock_code}_5m.csv"),
+            os.path.join(self.data_dir, f"{stock_code}_stock_data.csv"),
+        ]
+        csv_file = next((p for p in candidates if os.path.exists(p)), None)
+        if csv_file is None:
+            raise FileNotFoundError(f"数据文件不存在, đã thử: {candidates}")
 
         df = pd.read_csv(csv_file, encoding='utf-8-sig')
 
-        # 检查列名并标准化
+        # 检查列名并标准化 (hỗ trợ file chuẩn hoá)
         column_mapping = {
+            'timestamps': 'date',
             '日期': 'date',
             '开盘价': 'open',
             '最高价': 'high',
@@ -417,11 +424,12 @@ def main():
     主函数：运行Kronos模型回测
     """
     # 配置参数
+    repo_root = Path(__file__).resolve().parents[1]
     BACKTEST_CONFIG = {
-        "stock_code": "000831",  # 要回测的股票代码
-        "data_dir": r"D:\lianghuajiaoyi\Kronos\examples\data",  # 历史数据目录
-        "model_dir": r"D:\lianghuajiaoyi\Kronos\examples\yuce",  # 模型预测结果目录
-        "output_dir": r"D:\lianghuajiaoyi\Kronos\examples\backtest",  # 回测结果输出目录
+        "stock_code": "600580",  # 要回测的股票代码
+        "data_dir": str(repo_root / "data" / "ashare"),  # 历史数据目录
+        "model_dir": str(repo_root / "examples" / "yuce"),  # 模型预测结果目录
+        "output_dir": str(repo_root / "examples" / "yuce" / "backtest"),  # 回测结果输出目录
         "initial_capital": 100000,  # 初始资金
         "threshold": 0.02  # 交易阈值（2%）
     }

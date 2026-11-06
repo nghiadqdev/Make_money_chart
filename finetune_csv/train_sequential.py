@@ -8,6 +8,9 @@ from torch.utils.data import DataLoader
 import torch.distributed as dist
 
 sys.path.append('../')
+# Cho phép chạy từ bất kỳ thư mục nào: mọi đường dẫn tương đối trong config
+# (../data/..., ./finetuned/...) được tính từ finetune_csv/.
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 from model import Kronos, KronosTokenizer, KronosPredictor
 
 from config_loader import CustomFinetuneConfig

@@ -505,6 +505,12 @@ class KronosPredictor:
         self.tokenizer = self.tokenizer.to(self.device)
         self.model = self.model.to(self.device)
 
+        # Inference-only wrapper: luôn tắt dropout. Nếu để training=True,
+        # dropout sẽ chạy trong lúc dự đoán (kết quả ngẫu nhiên hơn) và
+        # backend MPS sẽ báo lỗi vì không hỗ trợ dropout trong attention.
+        self.tokenizer.eval()
+        self.model.eval()
+
     def generate(self, x, x_stamp, y_stamp, pred_len, T, top_k, top_p, sample_count, verbose):
 
         x_tensor = torch.from_numpy(np.array(x).astype(np.float32)).to(self.device)

@@ -1,8 +1,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import sys
-sys.path.append("../")
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from model import Kronos, KronosTokenizer, KronosPredictor
+
+DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "BTCUSDT_5m_2022-2026.csv"
 
 
 def plot_prediction(kline_df, pred_df):
@@ -43,10 +46,10 @@ tokenizer = KronosTokenizer.from_pretrained("NeoQuasar/Kronos-Tokenizer-base")
 model = Kronos.from_pretrained("NeoQuasar/Kronos-small")
 
 # 2. Instantiate Predictor
-predictor = KronosPredictor(model, tokenizer, max_context=512)
+predictor = KronosPredictor(model, tokenizer, max_context=512)  # tự chọn cuda/mps/cpu
 
 # 3. Prepare Data
-df = pd.read_csv("./data/XSHG_5min_600977.csv")
+df = pd.read_csv(DATA_FILE)
 df['timestamps'] = pd.to_datetime(df['timestamps'])
 
 lookback = 400

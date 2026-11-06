@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from pathlib import Path
 from datetime import datetime, timedelta
 import warnings
 
@@ -24,14 +25,20 @@ class HistoricalBacktester:
 
     def load_historical_data(self, stock_code):
         """加载历史数据"""
-        csv_file = os.path.join(self.data_dir, f"{stock_code}_stock_data.csv")
-        if not os.path.exists(csv_file):
-            raise FileNotFoundError(f"数据文件不存在: {csv_file}")
+        candidates = [
+            os.path.join(self.data_dir, f"{stock_code}_1d.csv"),
+            os.path.join(self.data_dir, f"{stock_code}_5m.csv"),
+            os.path.join(self.data_dir, f"{stock_code}_stock_data.csv"),
+        ]
+        csv_file = next((p for p in candidates if os.path.exists(p)), None)
+        if csv_file is None:
+            raise FileNotFoundError(f"数据文件不存在, đã thử: {candidates}")
 
         df = pd.read_csv(csv_file, encoding='utf-8-sig')
 
-        # 标准化列名
+        # 标准化列名 (hỗ trợ cả file chuẩn hoá của repo)
         column_mapping = {
+            'timestamps': 'date',
             '日期': 'date',
             '开盘价': 'open',
             '最高价': 'high',
@@ -124,8 +131,8 @@ class HistoricalBacktester:
         trades = []
         portfolio_values = []
 
-        # 按日期排序
-        results_df = results_df.sort_index()
+        # 按日期排序 (index mặc định là 0..n nên phải set_index trước)
+        results_df = results_df.set_index('date').sort_index()
 
         for date, row in results_df.iterrows():
             current_price = row['actual_close']
@@ -336,10 +343,11 @@ class HistoricalBacktester:
 def main():
     """主函数"""
     # 配置参数
+    repo_root = Path(__file__).resolve().parents[2]
     BACKTEST_CONFIG = {
-        "stock_code": "300418",
-        "data_dir": r"D:\lianghuajiaoyi\Kronos\examples\data",
-        "output_dir": r"D:\lianghuajiaoyi\Kronos\examples\historical_backtest",
+        "stock_code": "600580",
+        "data_dir": str(repo_root / "data" / "ashare"),
+        "output_dir": str(repo_root / "examples" / "yuce" / "backtest"),
         "initial_capital": 100000,
         "lookback_days": 60,  # 使用60天历史数据
         "pred_days": 30,  # 预测30天

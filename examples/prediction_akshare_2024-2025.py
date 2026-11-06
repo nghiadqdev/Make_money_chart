@@ -5,11 +5,12 @@ import sys
 import os
 from datetime import datetime, timedelta
 import warnings
+from pathlib import Path
 
 warnings.filterwarnings('ignore')
 
 # 添加项目路径以便导入自定义模块
-sys.path.append("../")
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from model import Kronos, KronosTokenizer, KronosPredictor
 
 # 设置中文字体
@@ -202,14 +203,15 @@ def plot_prediction_with_details(kline_df, pred_df, future_dates, stock_code="00
 
     # 1. 价格图表 - 更大更清晰
     # 只显示最近200个交易日的历史数据，避免图表过于拥挤
-    recent_history = close_df['历史数据'].iloc[-min(200, len(close_df['历史数据'])):]
+    hist_close = close_df['历史数据'].dropna()
+    recent_history = hist_close.iloc[-min(200, len(hist_close)):]
     ax1.plot(recent_history.index, recent_history.values, label='历史价格', color='#1f77b4', linewidth=2.5, alpha=0.9)
     ax1.plot(close_df['预测数据'].index, close_df['预测数据'].values, label='预测价格',
              color='#ff7f0e', linewidth=2.5, linestyle='-', marker='o', markersize=3)
 
     # 添加预测起始点的标记
     prediction_start_date = close_df['预测数据'].index[0] if len(close_df['预测数据']) > 0 else close_df.index[-1]
-    prediction_start_price = close_df['历史数据'].iloc[-1]
+    prediction_start_price = close_df['历史数据'].dropna().iloc[-1]
     ax1.axvline(x=prediction_start_date, color='red', linestyle='--', alpha=0.7, linewidth=1.5)
     ax1.annotate('预测起点', xy=(prediction_start_date, prediction_start_price),
                  xytext=(10, 10), textcoords='offset points',
@@ -247,7 +249,7 @@ def plot_prediction_with_details(kline_df, pred_df, future_dates, stock_code="00
 
     # 3. 价格变动图表 - 优化显示
     if len(close_df['预测数据']) > 0:
-        price_change = close_df['预测数据'] - close_df['历史数据'].iloc[-1]
+        price_change = close_df['预测数据'] - close_df['历史数据'].dropna().iloc[-1]
         colors = ['green' if x >= 0 else 'red' for x in price_change]
 
         # 每5个交易日显示一个标签，避免过于拥挤
@@ -277,13 +279,13 @@ def plot_prediction_with_details(kline_df, pred_df, future_dates, stock_code="00
         ax3.set_xticklabels([f'D{i + 1}' for i in xticks_positions])
 
     # 添加详细的统计信息框
-    if len(close_df['预测数据']) > 0 and not np.isnan(close_df['历史数据'].iloc[-1]):
+    if len(close_df['预测数据']) > 0 and not np.isnan(close_df['历史数据'].dropna().iloc[-1]):
         pred_stats = {
             '股票代码': stock_code,
             '股票名称': stock_name,
-            '当前价格': f"{close_df['历史数据'].iloc[-1]:.2f} 元",
+            '当前价格': f"{close_df['历史数据'].dropna().iloc[-1]:.2f} 元",
             '预测结束价格': f"{close_df['预测数据'].iloc[-1]:.2f} 元",
-            '预测涨跌幅': f"{(close_df['预测数据'].iloc[-1] / close_df['历史数据'].iloc[-1] - 1) * 100:+.2f}%",
+            '预测涨跌幅': f"{(close_df['预测数据'].iloc[-1] / close_df['历史数据'].dropna().iloc[-1] - 1) * 100:+.2f}%",
             '预测期间最高价': f"{close_df['预测数据'].max():.2f} 元",
             '预测期间最低价': f"{close_df['预测数据'].min():.2f} 元",
             '预测波动率': f"{close_df['预测数据'].std():.2f} 元",
@@ -321,7 +323,7 @@ def generate_prediction_report(close_df, volume_df, pred_df, future_dates, stock
     print(f"📊 {stock_name}({stock_code}) 股票预测报告")
     print(f"{'=' * 70}")
 
-    if len(close_df['预测数据']) == 0 or np.isnan(close_df['历史数据'].iloc[-1]):
+    if len(close_df['预测数据']) == 0 or np.isnan(close_df['历史数据'].dropna().iloc[-1]):
         print("❌ 没有有效的预测数据可生成报告")
         return
 
@@ -329,7 +331,7 @@ def generate_prediction_report(close_df, volume_df, pred_df, future_dates, stock
     min_len = min(len(close_df['预测数据']), len(volume_df['预测数据']), len(future_dates))
 
     # 基本统计
-    historical_close = close_df['历史数据'].iloc[-1]
+    historical_close = close_df['历史数据'].dropna().iloc[-1]
     predicted_close = close_df['预测数据'].iloc[-1]
     price_change_pct = (predicted_close / historical_close - 1) * 100
 
@@ -377,8 +379,13 @@ def main(stock_code="002354", stock_name="天娱数科", data_dir="./data", pred
     pred_days: 预测天数（自然日）
     output_dir: 输出文件目录
     """
-    # 构建数据文件路径
-    csv_file_path = os.path.join(data_dir, f"{stock_code}_stock_data.csv")
+    # 构建数据文件路径 (ưu tiên file đã chuẩn hoá trong repo)
+    candidates = [
+        os.path.join(data_dir, f"{stock_code}_1d.csv"),
+        os.path.join(data_dir, f"{stock_code}_5m.csv"),
+        os.path.join(data_dir, f"{stock_code}_stock_data.csv"),
+    ]
+    csv_file_path = next((p for p in candidates if os.path.exists(p)), candidates[-1])
 
     print(f"🎯 开始 {stock_name}({stock_code}) 股票价格预测")
     print("=" * 70)
@@ -399,12 +406,12 @@ def main(stock_code="002354", stock_name="天娱数科", data_dir="./data", pred
         # 1. 加载模型和分词器
         print("\n步骤1: 加载Kronos模型和分词器...")
         tokenizer = KronosTokenizer.from_pretrained("NeoQuasar/Kronos-Tokenizer-base")
-        model = Kronos.from_pretrained("NeoQuasar/Kronos-base")
+        model = Kronos.from_pretrained("NeoQuasar/Kronos-small")
         print("✅ 模型加载完成")
 
         # 2. 实例化预测器
         print("步骤2: 初始化预测器...")
-        predictor = KronosPredictor(model, tokenizer, device="cuda:0", max_context=512)
+        predictor = KronosPredictor(model, tokenizer, max_context=512)  # tự chọn cuda/mps/cpu
         print("✅ 预测器初始化完成")
 
         # 3. 准备数据
@@ -476,9 +483,9 @@ def main(stock_code="002354", stock_name="天娱数科", data_dir="./data", pred
         print(f"  📋 {os.path.join(output_dir, stock_code + '_detailed_predictions.csv')} - 详细预测数据")
 
         # 显示预测总结
-        if len(close_df['预测数据']) > 0 and not np.isnan(close_df['历史数据'].iloc[-1]):
+        if len(close_df['预测数据']) > 0 and not np.isnan(close_df['历史数据'].dropna().iloc[-1]):
             print(f"\n📈 预测总结:")
-            historical_price = close_df['历史数据'].iloc[-1]
+            historical_price = close_df['历史数据'].dropna().iloc[-1]
             predicted_price = close_df['预测数据'].iloc[-1]
             change_pct = (predicted_price / historical_price - 1) * 100
 
@@ -517,12 +524,13 @@ if __name__ == "__main__":
     """
 
     # ==================== 在这里修改股票配置 ====================
+    repo_root = Path(__file__).resolve().parents[1]
     STOCK_CONFIG = {
-        "stock_code": "300418",  # 股票代码
-        "stock_name": "昆仑万维",  # 股票名称
-        "data_dir": "./data",  # 数据文件目录
-        "pred_days": 100,  # 预测100个自然日
-        "output_dir": r"D:\lianghuajiaoyi\Kronos\examples\yuce"  # 输出文件目录
+        "stock_code": "600580",  # 股票代码
+        "stock_name": "卧龙电驱",  # 股票名称
+        "data_dir": str(repo_root / "data" / "ashare"),  # 数据文件目录
+        "pred_days": 60,  # 预测60个自然日
+        "output_dir": str(repo_root / "examples" / "yuce")  # 输出文件目录
     }
 
     # 其他股票配置示例：

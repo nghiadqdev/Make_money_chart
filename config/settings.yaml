@@ -1,0 +1,78 @@
+# Kronos KuCoin Paper-Trading Bot
+# Chạy: python main.py run --config config/settings.yaml
+# Đây là paper trading 100% — không gửi lệnh thật lên sàn.
+
+exchange:
+  id: kucoin
+  api_key: ""            # chỉ cần nếu bạn mở rộng sang private endpoints
+  api_secret: ""         # có thể override bằng KUCOIN_API_SECRET
+  api_passphrase: ""     # có thể override bằng KUCOIN_API_PASSPHRASE
+  sandbox: false         # paper engine không cần sandbox
+  timeout_ms: 20000
+  enable_rate_limit: true
+  max_retries: 5
+  backoff_base_sec: 2.0
+
+market:
+  symbol: "BTC/USDT"
+  timeframe: "15m"       # 15m | 30m | 1h; 15m = kiểm tra 96 lần/ngày
+  ohlcv_limit: 600
+  poll_interval_sec: 30  # kiểm tra SL/TP mỗi 30s
+  closed_candle_only: true
+
+model:
+  tokenizer_id: "NeoQuasar/Kronos-Tokenizer-base"
+  model_id: "NeoQuasar/Kronos-small"
+  device: "auto"         # auto | cpu | mps | cuda:0
+  max_context: 512
+  lookback: 512          # cố định 512 nến (trần context Kronos-small/base)
+  lookback_growth: 0     # 0 = không tăng dần; giữ cửa sổ ổn định
+  lookback_max: 512
+  pred_len: 4            # 4 nến x 15m = 1 giờ
+  n_paths: 128           # 128 đường Monte Carlo: xác suất mịn hơn 32
+  temperature: 1.0
+  top_p: 0.9
+  long_threshold: 0.62   # p_up >= threshold -> long
+  short_threshold: 0.38  # p_down >= 1 - threshold -> short
+  min_expected_return: 0.003
+  fee_buffer_pct: 0.0025 # 2 lần phí + slippage buffer
+
+strategy:
+  ema_fast: 50
+  ema_slow: 200
+  atr_period: 14
+  require_trend_alignment: true
+
+trading:
+  initial_balance: 100.0
+  taker_fee: 0.001       # 0.1% mỗi chiều
+  tranches: 4            # chia vốn thành 4 phần 25%
+  max_open_positions: 4
+  risk_per_trade_pct: 0.01
+  sl_atr_mult: 1.5
+  tp_atr_mult: 2.5
+  min_sl_pct: 0.006
+  max_sl_pct: 0.030
+  min_notional: 5.0
+  allow_short: true
+  max_drawdown_pct: 0.15
+  circuit_breaker_consecutive_losses: 3
+  circuit_breaker_cooldown_min: 120
+  shutdown_force_close_sec: 0   # 0 = chờ SL/TP vô hạn; >0 = đóng còn lại sau N giây
+
+learning:
+  enabled: true
+  auto_calibrate: true
+  min_samples: 100        # cần 100 forecast đã có kết quả mới hiệu chỉnh
+  window: 200             # dùng 200 forecast gần nhất
+  min_threshold: 0.55
+  max_threshold: 0.75
+  step: 0.01
+  calibration_path: "var/calibration.json"
+
+storage:
+  db_path: "var/kronos_bot.db"
+  state_path: "var/state.json"
+  control_path: "var/control.json"
+  log_dir: "logs"
+  log_level: "INFO"
